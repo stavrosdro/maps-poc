@@ -1,5 +1,15 @@
 import { defineStore } from 'pinia'
-import { LocationResponse, QueryResponse, locationResponseMapper, queryResponseMapper } from './helpers';
+import { LocationResponse, QueryResponse, isFormEmpty, locationResponseMapper, queryResponseMapper } from './helpers';
+
+export enum ERROR_STATE {
+    EMPTY_FORM = "EMPTY_FORM",
+    EMPTY_PREDICTIONS = "EMPTY_PREDICTIONS"
+}
+
+export enum REGISTRATION_STEP {
+    FILLING_ADDRESS_FORM = "FILLING_ADDRESS_FORM",
+    VALIDATE_ADDRESS = "VALIDATE_ADDRESS"
+}
 
 export type MapsState = {
     addressSearchQuery: string;
@@ -9,6 +19,8 @@ export type MapsState = {
     selections: Option[],
     addressForm: AddressForm;
     errorMessage: string;
+    errorState: ERROR_STATE | null;
+    registrationStep: REGISTRATION_STEP;
 }
 
 export type AddressForm = {
@@ -42,7 +54,9 @@ export const useMapsStore = defineStore('maps', {
             long: "",
             lang: "",
         },
-        errorMessage: ""
+        errorMessage: "",
+        errorState: null,
+        registrationStep: REGISTRATION_STEP.FILLING_ADDRESS_FORM
     }),
     actions: {
         resetAddressForm() {
@@ -111,17 +125,11 @@ export const useMapsStore = defineStore('maps', {
             this.isLoading = false;
             this.errorMessage = "something"
         },
-        onUpdateAddressForm(data: AddressForm) {
-            // this.addressForm = {
-            //     ...this.addressForm,
-            //     streetAddress: data.streetAddress,
-            //     city: data.city,
-            //     postcode: data.postcode
-            // }
-
-            this.autoSearchAndSelect(data)
+        onUpdateAddressForm(data: AddressForm, autoUpdate=true) {
+            this.addressForm = data;
+            autoUpdate && this.autoUpdateLangLong(data);
         },
-        async autoSearchAndSelect(data: AddressForm) {
+        async autoUpdateLangLong(data: AddressForm) {
             this.isLoading = true;
             this.errorMessage = "";
 
@@ -145,18 +153,66 @@ export const useMapsStore = defineStore('maps', {
             try {
                 const response = await fetch(`/api/${option.value}`);
                 const data = await response.json() as LocationResponse;
-                this.autoSearchAndSelectSuccess(locationResponseMapper(data))
+                this.autoUpdateLangLongSuccess(locationResponseMapper(data))
+            } catch (error) {
+                this.autoUpdateLangLongFail(error)
+            }
+        },
+        autoUpdateLangLongSuccess({lang,long}: {lang:string;long:string}) {
+            this.isLoading = false;
+
+            this.addressForm.lang = lang
+            this.addressForm.long = long
+        },
+        autoUpdateLangLongFail(error: any) {
+            // TODO check if request is cancelled
+
+            console.log(error);
+            
+            this.isLoading = false;
+            this.errorMessage = "something"
+        },
+        userUpdateLangLong({lat,lng}: {lat:number; lng: number}) {
+            this.addressForm.lang = lat.toString();
+            this.addressForm.long = lng.toString();
+        },
+        async userFormSubmit() {
+            this.errorState = null;
+
+            // ? validate if form is empty
+            if (isFormEmpty(this.addressForm)) {
+                this.errorState = ERROR_STATE.EMPTY_FORM
+                return
+            }
+
+            // ? validate form with google for errors
+            const query = `${this.addressForm.streetAddress} ${this.addressForm.city} ${this.addressForm.postcode} ${this.addressForm.state}`
+
+            let option: Option | null = null
+
+            try {
+                const response = await fetch(`/api/address/${query}`);
+                const data = await response.json() as QueryResponse;
+                option = queryResponseMapper(data)[0]
+
             } catch (error) {
                 console.log(error); // TODO create an action
             }
+
+            if (!option) {
+                this.errorState = ERROR_STATE.EMPTY_PREDICTIONS
+                return
+            }
+
+            this.registrationStep = REGISTRATION_STEP.VALIDATE_ADDRESS
+        }
+    },
+    getters: {
+        showMapView(): boolean {
+            return !!(this.addressForm.lang && this.addressForm.long);
         },
-        autoSearchAndSelectSuccess(data: AddressForm) {
-            this.isLoading = false;
-            this.addressForm = data;
-        },
-        updateLangLong(data: {lang: string; long:string}) {
-            this.addressForm.lang = data.lang;
-            this.addressForm.long = data.long;
+        getAddressLangLong(): number[] {
+            return [+this.addressForm.lang, +this.addressForm.long];
         }
     }
 })

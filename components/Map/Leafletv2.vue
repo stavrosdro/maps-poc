@@ -8,6 +8,7 @@ export interface Props {
   mapCoordinates?: number[];
   markerCoordinates?: number[];
   iconUrl?: string;
+  allowMapDrag?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -15,6 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
   mapCoordinates: () => [37.9840437526508, 23.72185507275161],
   iconUrl: "https://api.iconify.design/solar:map-point-hospital-bold.svg",
   markerCoordinates: () => [37.9840437526508, 23.72185507275161],
+  allowMapDrag: false,
 });
 
 const emit = defineEmits(["updatePosition"]);
@@ -49,7 +51,7 @@ onMounted(() => {
 
     const marker = L.marker(props.markerCoordinates, {
       icon: defaultIcon,
-      draggable: true,
+      draggable: props.allowMapDrag,
     }).addTo(map);
 
     marker.on("dragend", (e: any) => {

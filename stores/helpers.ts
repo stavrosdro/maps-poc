@@ -120,3 +120,9 @@ function mapLatLng(response: LocationResponse): { lang: string; long: string } {
     lang: "" + response.result.geometry?.location.lat,
   };
 }
+
+export function isFormEmpty(form: AddressForm) {
+  if (!form.streetAddress || form.streetAddress.length < 4) {
+    return true
+  }
+}

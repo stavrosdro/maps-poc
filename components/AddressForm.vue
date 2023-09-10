@@ -1,6 +1,5 @@
 <template>
   <div>
-    {{ props.form }}
     <div>
       <label for="address">Οδός και αριθμός:</label>
       <input
@@ -9,7 +8,6 @@
         v-model="localForm.streetAddress"
         @input="onUpdateCriticalField"
         class="inputStyle"
-        @blur="$emit('addressBlur')"
       />
     </div>
     <div>
@@ -48,7 +46,7 @@
         type="text"
         id="floor"
         v-model="localForm.floor"
-        @input="updateForm"
+        @input="onUpdateField"
         class="inputStyle"
       />
     </div>
@@ -61,7 +59,7 @@ import { AddressForm } from '../stores/useMapsStore';
 
 const props = defineProps<{
   form: AddressForm;
-  updateFormField: (form: AddressForm) => void
+  updateFormField: (form: AddressForm, autoUpdate?: boolean) => void
 }>();
 
 
@@ -85,27 +83,11 @@ watchEffect(() => {
     localForm.value.lang = props.form.lang
     localForm.value.long = props.form.long
   }
-
-  // localForm.value.streetAddress = localForm.value.streetAddress || props.form.streetAddress
-  // localForm.value.state = props.form.state
-  // localForm.value.city = localForm.value.city || props.form.city
-  // localForm.value.postcode = localForm.value.postcode || props.form.postcode
-  // localForm.value.floor = localForm.value.floor || props.form.floor
 })
-
-
 
 const onUpdateCriticalField = useDebounce(() => props.updateFormField(localForm.value))
 
-const emit = defineEmits(["form", "submit", "addressBlur"]);
-
-const updateForm = () => {
-  // emit("form", localForm.value);
-};
-
-const onSubmit = () => {
-  // emit("submit");
-};
+const onUpdateField = useDebounce(() => props.updateFormField(localForm.value, false))
 </script>
 
 <style scoped>
