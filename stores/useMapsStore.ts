@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { LocationResponse, QueryResponse, isFormEmpty, locationResponseMapper, queryResponseMapper } from './helpers';
+import fetchData, { getErrorMessage, isRequestAbortError } from '../utils/http';
 
 export enum ERROR_STATE {
     EMPTY_FORM = "EMPTY_FORM",
@@ -81,8 +82,7 @@ export const useMapsStore = defineStore('maps', {
             this.resetAddressForm();
 
             try {
-                const response = await fetch(`/api/address/${query}`);
-                const data = await response.json() as QueryResponse;
+                const data = await fetchData(`/api/address/${query}`, undefined, 'initial_query') as QueryResponse;
                 this.searchWithQuerySuccess(queryResponseMapper(data))
             } catch (error) {
                 this.searchWithQueryFail(error)
@@ -93,12 +93,12 @@ export const useMapsStore = defineStore('maps', {
             this.selections = options;
         },
         searchWithQueryFail(error: any) {
-            // TODO check if request is cancelled
-
-            console.log(error);
+            if (isRequestAbortError(error)) {
+                return
+            }
             
             this.isLoading = false;
-            this.errorMessage = "something"
+            this.errorMessage = getErrorMessage(error)
         },
         async selectLocation(selection: Option) {
             this.isLoading = true;
@@ -106,8 +106,7 @@ export const useMapsStore = defineStore('maps', {
             this.errorMessage = "";
 
             try {
-                const response = await fetch(`/api/${this.placeId}`);
-                const data = await response.json() as LocationResponse;
+                const data = await fetchData(`/api/${this.placeId}`, undefined, 'select_location') as LocationResponse;
                 this.selectLocationSuccess(locationResponseMapper(data))
             } catch (error) {
                 this.selectLocationFail(error)
@@ -118,12 +117,12 @@ export const useMapsStore = defineStore('maps', {
             this.addressForm = data
         },
         selectLocationFail(error: any) {
-            // TODO check if request is cancelled
-
-            console.log(error);
+            if (isRequestAbortError(error)) {
+                return
+            }
             
             this.isLoading = false;
-            this.errorMessage = "something"
+            this.errorMessage = getErrorMessage(error)
         },
         onUpdateAddressForm(data: AddressForm, autoUpdate=true) {
             this.addressForm = data;
@@ -138,12 +137,13 @@ export const useMapsStore = defineStore('maps', {
             let option: Option | null = null
 
             try {
-                const response = await fetch(`/api/address/${query}`);
-                const data = await response.json() as QueryResponse;
+                const data = await fetchData(`/api/address/${query}`, undefined, 'options_for_auto_lang_long') as QueryResponse;
                 option = queryResponseMapper(data)[0]
 
             } catch (error) {
-                console.log(error); // TODO create an action
+                if (isRequestAbortError(error)) {
+                    return
+                }
             }
 
             if (!option) {
@@ -151,8 +151,7 @@ export const useMapsStore = defineStore('maps', {
             }
 
             try {
-                const response = await fetch(`/api/${option.value}`);
-                const data = await response.json() as LocationResponse;
+                const data = await fetchData(`/api/${option.value}`, undefined, 'auto_lang_long') as LocationResponse;
                 this.autoUpdateLangLongSuccess(locationResponseMapper(data))
             } catch (error) {
                 this.autoUpdateLangLongFail(error)
@@ -165,12 +164,12 @@ export const useMapsStore = defineStore('maps', {
             this.addressForm.long = long
         },
         autoUpdateLangLongFail(error: any) {
-            // TODO check if request is cancelled
-
-            console.log(error);
+            if (isRequestAbortError(error)) {
+                return
+            }
             
             this.isLoading = false;
-            this.errorMessage = "something"
+            this.errorMessage = getErrorMessage(error)
         },
         userUpdateLangLong({lat,lng}: {lat:number; lng: number}) {
             this.addressForm.lang = lat.toString();
@@ -191,12 +190,12 @@ export const useMapsStore = defineStore('maps', {
             let option: Option | null = null
 
             try {
-                const response = await fetch(`/api/address/${query}`);
-                const data = await response.json() as QueryResponse;
+                const data = await fetchData(`/api/address/${query}`, undefined, 'address_form_submit') as QueryResponse;
                 option = queryResponseMapper(data)[0]
-
             } catch (error) {
-                console.log(error); // TODO create an action
+                if (isRequestAbortError(error)) {
+                    return
+                }
             }
 
             if (!option) {

@@ -33,9 +33,7 @@ const emit = defineEmits<{
   (event: "input", value: string): void;
   (event: "select", value: Option): void;
 }>();
-const onInput = () => {
-  emit("input", address.value);
-};
+const onInput = useDebounce(() => emit("input", address.value));
 
 const selectSuggestion = (option: Option) => {
   emit("select", option);
